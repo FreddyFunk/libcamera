@@ -317,4 +317,22 @@ bool IPAManager::isSignatureValid([[maybe_unused]] IPAModule *ipa) const
 #endif
 }
 
+void IPAManager::logIsolationFallback(IPAModule *ipa)
+{
+	LOG(IPAManager, Warning)
+		<< "IPA process isolation failed for "
+		<< ipa->path()
+		<< ", falling back to in-process mode";
+}
+
+#if HAVE_IPA_PUBKEY
+void IPAManager::logIsolationForced(IPAModule *ipa)
+{
+	LOG(IPAManager, Error)
+		<< "IPA process isolation failed for "
+		<< ipa->path()
+		<< " and isolation is forced";
+}
+#endif
+
 } /* namespace libcamera */

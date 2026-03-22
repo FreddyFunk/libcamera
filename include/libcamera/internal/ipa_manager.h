@@ -44,8 +44,27 @@ public:
 		auto proxy = [&]() -> std::unique_ptr<T> {
 			if (isSignatureValid(m))
 				return std::make_unique<typename T::Threaded>(m, cm_);
-			else
-				return std::make_unique<typename T::Isolated>(m, cm_);
+
+			auto isolated = std::make_unique<typename T::Isolated>(m, cm_);
+			if (isolated->isValid())
+				return isolated;
+
+#if HAVE_IPA_PUBKEY
+			if (forceIsolation_) {
+				logIsolationForced(m);
+				return isolated;
+			}
+#endif
+
+			/*
+			 * Fall back to in-process loading when process
+			 * isolation fails. This typically happens inside
+			 * sandboxed environments (e.g. Flatpak) where
+			 * fork() is blocked by the seccomp filter.
+			 */
+			logIsolationFallback(m);
+
+			return std::make_unique<typename T::Threaded>(m, cm_);
 		}();
 
 		if (!proxy->isValid()) {
@@ -72,6 +91,11 @@ private:
 			  uint32_t maxVersion);
 
 	bool isSignatureValid(IPAModule *ipa) const;
+
+	static void logIsolationFallback(IPAModule *ipa);
+#if HAVE_IPA_PUBKEY
+	static void logIsolationForced(IPAModule *ipa);
+#endif
 
 	const CameraManager &cm_;
 	std::vector<std::unique_ptr<IPAModule>> modules_;
